@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ro"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Local Agent Stack — Faza 2 Report</title>
+<style>
+:root{--bg:#0f1115;--fg:#e6e6e6;--mut:#9aa0aa;--ok:#3fb950;--warn:#d29922;--bad:#f85149;--card:#171a21;--bd:#262b34;--acc:#58a6ff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 -apple-system,Segoe UI,Roboto,sans-serif;padding:32px;max-width:1000px;margin:auto}
+h1{font-size:26px;margin:0 0 4px}h2{font-size:19px;margin:30px 0 10px;border-bottom:1px solid var(--bd);padding-bottom:6px}
+.sub{color:var(--mut);font-size:13px;margin-bottom:18px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:16px 18px;margin:12px 0}
+table{border-collapse:collapse;width:100%;margin:8px 0;font-size:14px}
+th,td{border:1px solid var(--bd);padding:7px 10px;text-align:left;vertical-align:top}
+th{background:#1c2028;color:var(--mut);font-weight:600}
+.ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}.bad{color:var(--bad);font-weight:600}
+code,.sha{font:12.5px "SF Mono",Menlo,monospace;color:#c9d1d9;background:#1c2028;padding:1px 5px;border-radius:4px;word-break:break-all}
+.sha{color:var(--acc)}
+.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:12px;font-weight:600}
+.b-ok{background:rgba(63,185,80,.15);color:var(--ok);border:1px solid rgba(63,185,80,.4)}
+ul{margin:6px 0 6px 18px;padding:0}li{margin:3px 0}
+</style></head><body>
+
+<h1>Local Agent Stack — Faza 2 <span class="badge b-ok">DONE</span></h1>
+<div class="sub">Instalare + config harness castigator (Zero). Executor: Opus 4.8 (rutat Sonnet/medium). Data: 6 iul 2026 (S168). Spec: <code>local_agent_stack_SPEC_v1.md §5</code></div>
+
+<div class="card">
+<b>Rezultat:</b> Zero configurat pe oMLX cu permission gates ON, thinking-off verificat, routing documentat + swap nativ probat. <b>Ambele smoke tests (T1+T4) PASS pe 35B.</b> Criteriu de iesire §5 bifat.
+</div>
+
+<h2>0. Provenance / SHA re-pin (decizie Adrian)</h2>
+<div class="card">
+Faza 0 auditase <span class="sha">95ccd5bc327f6fb464ff0239f7229de789f578dc</span> (commit main dev), dar artefactul instalat + castigator bake-off = npm <code>@gitlawb/zero@0.1.0</code> = tag <b>v0.1.0</b> <span class="sha">c807f92b72b4830e589f16d2bd3e4d71985ef228</span>. Audit != artefact rulat.
+<br><br><b>Decizie:</b> re-scan pe tag-ul efectiv shipped (c807f92b), tine npm. Audit == ce ruleaza. Pin nou: <span class="sha">c807f92b</span> (v0.1.0). Upstream are si v0.2.0 (82ecac52) — NU adoptat.
+</div>
+<table>
+<tr><th>Verificare supply-chain (spec §3)</th><th>Rezultat</th></tr>
+<tr><td>skillspector static (--no-llm, 1020 componente)</td><td><span class="warn">CRITICAL / DO_NOT_INSTALL — respins ca decisiv</span>: misfit de scanner (unealta pt skills LangGraph; agent de cod trip-uie fiecare euristica "Privilege Escalation / Excessive Agency" pe <code>exec_command</code>, <code>auth.go</code>, MCP registry, teste). Aceeasi clasa de fals-pozitiv ca nota S142.</td></tr>
+<tr><td>postinstall.mjs (singura suprafata reala de install)</td><td><span class="ok">SAFE</span>: download HTTPS-only din repo pinned, SHA-256 verificat contra <code>.sha256</code> release, cap 512MB, zip-slip guard (temp extract + copy doar basename cunoscut), guard TLS-downgrade pe redirect. Zero citire credentials, zero telemetrie, zero exec arbitrar.</td></tr>
+<tr><td>Verdict real</td><td><span class="ok">SAFE</span> — identic ca design cu Nota A din Faza 0.</td></tr>
+</table>
+
+<h2>Config final (spec §5.1–5.5)</h2>
+<table>
+<tr><th>#</th><th>Cerinta</th><th>Stare</th></tr>
+<tr><td>5.1</td><td>Install pe SHA pinned</td><td class="ok">npm 0.1.0 = tag c807f92b (marker <code>.zero-binary-version</code> = 0.1.0), audit re-aliniat pe acel SHA</td></tr>
+<tr><td>5.2</td><td>Provider oMLX: baseURL + key env + model exact</td><td class="ok">baseURL <code>http://localhost:8000/v1</code>, <code>apiKeyEnv=OMLX_API_KEY</code> (zero secret in config), model <code>Qwen3.6-35B-A3B-MLX-6bit</code>. Connectivity probe: <b>200</b></td></tr>
+<tr><td>5.3</td><td>Permission gates ON (write/shell/network/destructiv)</td><td class="ok">Sandbox <code>mode=enforce</code>, <code>network=deny</code>, backend <code>macos-seatbelt</code> nativ, root confinat la <code>Claude - folder</code>. Confirmation policy pe 3 nivele (BLOCKED / ALWAYS-CONFIRM / PRE-APPROVAL). <code>tools:{}</code>/<code>preferences:{}</code> = default, <b>fara auto-approve global</b></td></tr>
+<tr><td>5.4</td><td>Thinking-off patch pe Qwen</td><td class="ok">35B + 27B-AEON: <code>enable_thinking is not defined or ... false</code> — deja aplicat, verificat in chat_template.jinja</td></tr>
+<tr><td>5.5</td><td>Fisier routing modele</td><td class="ok"><code>~/.config/zero/model-routing.md</code> scris. Swap nativ probat: profil <code>omlx-copy</code> (27B) adaugat, comutare via <code>zero providers use &lt;name&gt;</code></td></tr>
+</table>
+
+<h2>Smoke tests (spec §5.6)</h2>
+<table>
+<tr><th>Test</th><th>Ce masoara</th><th>Rezultat</th><th>Dovada</th></tr>
+<tr><td><b>T1</b> — listeaza toate .html recursiv (7 plantate, 4 in subfoldere)</td><td>completitudine recursiva (testul ratat de Goose S119)</td><td class="ok">PASS</td><td>tool <code>glob</code> -> 7/7 fisiere, incl. toate cele 4 nested. Count corect vs ground truth <code>find | wc -l = 7</code></td></tr>
+<tr><td><b>T4</b> — extrage <code>version</code> din config.json -> VERSION.txt</td><td>2+ tool-calls inlantuite + write gated</td><td class="ok">PASS</td><td><code>read_file</code> -> <code>write_file</code>. VERSION.txt = <code>3.14.159</code> (match exact ground truth). Bonus: self-recovery dintr-o eroare initiala de path (retry corect fara interventie)</td></tr>
+</table>
+
+<h2>Gap-uri notate (NU blocheaza Faza 2)</h2>
+<div class="card"><ul>
+<li><b>Verifier 12B neincarcat:</b> oMLX <code>/v1/models</code> expune doar 35B, 27B-AEON, gemma-4-26B, Nemotron-3-Nano-30B. <code>gemma-4-12B</code> (verifier §7) si Qwen3.5-9B lipsesc. Actiune Faza 4: incarca 12B in oMLX inainte de verifier loop; pana atunci verifier = script determinist (oricum treapta preferata).</li>
+<li><b>LSP servers lipsa</b> (gopls, pyright, typescript-language-server): edit-urile pe Go/Py/TS degradeaza la text-only. Non-blocant; instaleaza la nevoie.</li>
+<li><b>Nemotron-3-Nano-30B</b>: rol inca TBD; candidat verifier alternativ daca 12B ramane neincarcat.</li>
+</ul></div>
+
+<h2>Fisiere atinse</h2>
+<div class="card"><ul>
+<li><code>~/Library/Application Support/zero/config.json</code> — provider <code>omlx-copy</code> (27B) adaugat</li>
+<li><code>~/.config/zero/model-routing.md</code> — nou (routing + swap + gap-uri)</li>
+<li><code>CLAUDE OUTPUTS/tooling/local_stack_phase2_report.html</code> — acest raport</li>
+</ul></div>
+
+<div class="sub" style="margin-top:24px">NEXT: Faza 3 (AGENTS-LOCAL.md + skills sync via skills-manager + memorie proprie + coordonare 3-agenti). Un task = o sesiune.</div>
+</body></html>

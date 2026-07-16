@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<title>Local Agent Stack — Faza 3 Report</title>
+<style>
+:root{--bg:#0f1115;--fg:#e6e6e6;--mut:#9aa0aa;--ok:#3fb950;--warn:#d29922;--bad:#f85149;--card:#171a21;--bd:#262b34;--acc:#58a6ff}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;padding:32px;line-height:1.55}
+.wrap{max-width:960px;margin:0 auto}
+h1{font-size:22px;margin-bottom:4px}
+.sub{color:var(--mut);font-size:13px;margin-bottom:24px}
+h2{font-size:16px;border-bottom:1px solid var(--bd);padding-bottom:6px;margin-top:32px}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+td,th{border:1px solid var(--bd);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--card);color:var(--mut)}
+.ok{color:var(--ok);font-weight:600}
+.warn{color:var(--warn);font-weight:600}
+.bad{color:var(--bad);font-weight:600}
+code,.sha{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;background:var(--card);padding:1px 5px;border-radius:4px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:16px;margin:12px 0}
+pre{background:#0a0c10;border:1px solid var(--bd);border-radius:6px;padding:12px;overflow-x:auto;font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>LOCAL AGENT STACK — Faza 3: Cunoaștere + Skills + Memorie</h1>
+<div class="sub">Executor: Sonnet 5 (rutat, effort medium). Data: 6 iul 2026 (S168). Spec: <code>local_agent_stack_SPEC_v1.md §6</code></div>
+
+<p><b>Rezultat:</b> AGENTS-LOCAL.md scris + 2 skills sincate nativ (checksum-pinned) + smoke test PASS + coordonare 3-agenți actualizată. graphify sărit deliberat (friction, opțional per spec). Criteriu de ieșire §6 bifat.</p>
+
+<h2>6a. AGENTS-LOCAL.md</h2>
+<p>Fișier nou: <code>Claude - folder/AGENTS-LOCAL.md</code>. Distilare din CLAUDE.md: CRITICAL ISOLATION (verbatim), writing rules, code defaults Karpathy, surgical changes, verifier doctrine, output paths (<code>_local_vN</code>). Exclus explicit: model routing Claude, istorie sesiuni, BTSP UI, reguli tokeni Claude.</p>
+
+<h2>6b. Skills — decizie: nativ Zero, nu skills-manager</h2>
+<div class="card">
+<p><b>Decizie (confirmată de Adrian):</b> Zero are mecanism nativ <code>zero skill add &lt;path&gt;</code> checksum-pinned (skills.lock) — acoperă cerința de sync fără a construi skills-manager (Swift/macOS, build din surse, util doar pentru sync către 40+ agenți simultan, nu e cazul aici).</p>
+</div>
+<table>
+<tr><th>Skill</th><th>Compatibil?</th><th>Motiv</th><th>Hash sincat</th></tr>
+<tr><td><code>clean</code></td><td class="ok">DA</td><td>Read/Edit/Grep/Bash — zero dependință Claude-only</td><td class="sha">sha256:70dbe405...ade56af0eef</td></tr>
+<tr><td><code>firestore-guard</code></td><td class="ok">DA</td><td>Read/Grep/Glob/Bash — zero dependință Claude-only</td><td class="sha">sha256:b1bd7e04...cce0b6c5295</td></tr>
+<tr><td><code>post-deploy-verify</code></td><td class="bad">NU — INCOMPATIBIL</td><td>depinde de <code>mcp__Claude_Preview__*</code> (harness Claude-only, fără echivalent local)</td><td>—</td></tr>
+</table>
+
+<h3>Test de invocare (dovadă)</h3>
+<p>Draft plantat cu em-dash + "sinergie" → <code>zero exec</code> a invocat skill-ul <code>clean</code> ca tool call, a scanat, reparat și re-scanat conform pașilor din SKILL.md.</p>
+<pre>Input:  "Ofertele noastre nu sunt doar bune — sunt excepționale. Sincronizăm
+         eforturile tale de marketing pentru a genera sinergie reală."
+Output: "Ofertele noastre nu sunt bune, sunt excepționale. Sincronizăm
+         eforturile tale de marketing pentru a genera impact real."
+Verificare determinist: grep -c '—\|–' draft_clean.txt → 0 (PASS)</pre>
+<p>Agentul a urmat checklist-ul complet (em-dash, vocabular interzis, ghilimele, emoji, hashtag) și a raportat un tabel hituri găsite/reparate + verdict final, exact cum cere procesul din SKILL.md.</p>
+
+<h2>6c. graphify — SKIP (per spec, opțional)</h2>
+<p>Neinstalat: necesită clone + build separat, nu era disponibil în mediul curent. Repo-ul <code>Claude - folder</code> e eterogen (md + html + cod mixt) — riscul unui graph inutilizabil sau extracție de ore e exact cazul de skip descris în spec §6c. Memoria rămâne 100% markdown (AGENTS-LOCAL.md + skills + memory/). Reluare doar dacă apare nevoie concretă de query pe graf de cod.</p>
+
+<h2>6d. Memorie proprie + coordonare 3-agenți</h2>
+<table>
+<tr><th>Item</th><th>Status</th><th>Locație</th></tr>
+<tr><td>Memorie agent local</td><td class="ok">creat</td><td><code>~/.config/zero/memory/README.md</code> — privat, separat de <code>.claude/</code> și <code>.codex/</code></td></tr>
+<tr><td>AGENT_COORDINATION.md</td><td class="ok">actualizat</td><td>Zero adăugat ca al treilea agent: ownership <code>AGENTS-LOCAL.md</code>, sufix <code>_local_vN</code>, memorie proprie, append-only pe MEMORY_SHARED/SESSION_LOG</td></tr>
+<tr><td>Lock check</td><td class="ok">verificat</td><td><code>.locks/</code> gol înainte de editare, niciun conflict</td></tr>
+</table>
+
+<h2>Exit criteria §6 — bifat</h2>
+<ul>
+<li>✅ AGENTS-LOCAL.md scris</li>
+<li>✅ Agentul local respectă writing rules pe draft test (em-dash + vocabular interzis prinse și reparate)</li>
+<li>✅ Un skill sincat rulează (clean, invocat prin tool call, verificat determinist cu grep)</li>
+<li>✅ Coordonarea actualizată (3 agenți, AGENT_COORDINATION.md)</li>
+</ul>
+
+<div class="sub" style="margin-top:24px">NEXT: Faza 4 (orchestrare launchd/cron + verifier loop 12B) → Faza 5 (acceptance, 5 teste inclusiv izolare A5). Un task = o sesiune.</div>
+</div>
+</body>
+</html>

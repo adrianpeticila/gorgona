@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<title>Local Agent Stack — Faza 4 Report (Orchestrare + Verifier Loop)</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 960px; margin: 40px auto; padding: 0 20px; color: #1a1a1a; line-height: 1.5; }
+  h1 { font-size: 1.6em; border-bottom: 3px solid #333; padding-bottom: 8px; }
+  h2 { font-size: 1.25em; margin-top: 2em; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 0.92em; }
+  th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: #f2f2f2; }
+  .pass { color: #0a7a2f; font-weight: bold; }
+  .fail { color: #b00020; font-weight: bold; }
+  .warn { background: #fff8e1; border-left: 4px solid #f9a825; padding: 10px 14px; margin: 12px 0; }
+  code, pre { background: #f5f5f5; font-size: 0.88em; }
+  pre { padding: 10px; overflow-x: auto; border-radius: 4px; border: 1px solid #ddd; }
+  .meta { color: #666; font-size: 0.9em; }
+</style>
+</head>
+<body>
+
+<h1>Local Agent Stack — Faza 4: Orchestrare + Verifier Loop</h1>
+<p class="meta">Sesiune 168 · 6 iul 2026 · Executor: Sonnet (confirmat de Adrian) · Spec: <code>local_agent_stack_SPEC_v1.md</code> §7</p>
+
+<h2>Rezultat</h2>
+<p><strong>Exit criteria din spec §7 — atinse, cu 2 deviații documentate mai jos (constrângeri hard, nu decizii arbitrare):</strong></p>
+<table>
+<tr><th>Cerință spec</th><th>Status</th><th>Notă</th></tr>
+<tr><td>2 job-uri launchd programate, rulate ≥1 dată, output corect pe disc</td><td class="pass">PASS</td><td>Ambele exit code 0, conținut corect, count-uri exacte (58/7)</td></tr>
+<tr><td>Verifier loop demonstrat (producător 35B, verifier separat, discrepanță prinsă sau confirmare curată)</td><td class="pass">PASS</td><td>Tier 1 (script) + Tier 2 (model) — ambele testate, inclusiv catch de discrepanță sintetică</td></tr>
+<tr><td>Verifier = Gemma 12B (spec literal)</td><td class="warn">DEVIAT → 26B</td><td>12B e GGUF, oMLX (runtime MLX-only) nu-l poate servi. Vezi §2</td></tr>
+<tr><td>Job-uri operează direct pe <code>~/Documents/Claude - folder</code></td><td class="warn">DEVIAT → ~/zero-workspace</td><td>TCC blochează launchd crud pe Documents. Vezi §1</td></tr>
+</table>
+
+<h2>§1 — Blocker major: TCC blochează launchd pe ~/Documents</h2>
+<p>Primul run al job-urilor (direct pe repo) a ieșit cu exit code 0 dar output gol/greșit (0 fișiere găsite, ar fi trebuit 55+). Diagnosticat cu job de test izolat:</p>
+<pre>find: ~/workspace: Operation not permitted</pre>
+<p>Root cause verificat empiric, nu presupus:</p>
+<ul>
+<li>Terminalul (și sesiunea asta) au deja acces la Documents — de-asta rulările manuale mergeau perfect.</li>
+<li>Un <code>LaunchAgent</code> pornit crud de launchd (fără o aplicație GUI "responsabilă" în lanțul de proces) nu moștenește acel acces.</li>
+<li>Adrian a adăugat <code>/bin/bash</code> la Full Disk Access → tot blocat.</li>
+<li>Adăugat și <code>/usr/bin/find</code> → tot blocat.</li>
+<li>Test izolat suplimentar: <code>rsync</code> și <code>cat</code>, ambele blocate identic, indiferent de FDA.</li>
+<li>Test de control: același script, citind dintr-un folder simplu din <code>$HOME</code> (în afara Documents/Desktop/Downloads) → merge instant, fără nicio grant.</li>
+</ul>
+<div class="warn"><strong>Concluzie:</strong> pe acest build de macOS, TCC pare să evalueze fiecare binar exec-uit de un LaunchAgent independent, iar Full Disk Access pe binare individuale (bash/find) nu deblochează accesul la Documents fără o aplicație-părinte cu identitate GUI proprie deja autorizată. Nu e un bug de configurare de-al nostru — e o limitare de mediu.</div>
+
+<h2>§2 — Decizie Adrian: relocare scope în afara Documents</h2>
+<p>Prezentat 3 opțiuni lui Adrian (adaugă și mai multe binare la FDA / logout-login / relocare scope). Alese: <strong>relocare scope</strong>.</p>
+<p>Arhitectură rezultată:</p>
+<pre>~/zero-workspace/
+  manifests/                     ← liste plain-text (fișiere modificate ultimele 24h)
+    recent_repo_files.txt
+    recent_clippings_files.txt
+  outputs/                       ← output-urile job-urilor (aici scrie launchd, fără restricții)
+  refresh_manifests.sh           ← PRIVILEGIAT: citește din ~/Documents, regenerează manifests/
+  sync_outputs_to_repo.sh        ← PRIVILEGIAT: copiază outputs/ → CLAUDE OUTPUTS/tooling/local_agent_jobs/</pre>
+<p><strong>Important — limitare reziduală:</strong> job-urile launchd în sine rulează 100% autonom, local, fără Claude. DAR puntea către repo-ul real (<code>refresh_manifests.sh</code> + <code>sync_outputs_to_repo.sh</code>) trebuie rulată dintr-o sesiune cu acces la Documents (Terminal interactiv sau Claude Code) — nu poate fi ea însăși un job launchd, din același motiv TCC. Practic: manifestele + sincronizarea înapoi în repo cer un touch periodic manual/Claude, nu sunt "set and forget" pe termen nelimitat. Producția + verificarea (partea de model) rămân integral locale și $0 cloud.</p>
+
+<h2>§3 — Scheduler: launchd</h2>
+<table>
+<tr><th>Job</th><th>Plist</th><th>Orar</th><th>Script</th></tr>
+<tr><td>Daily brief</td><td><code>~/Library/LaunchAgents/com.zero.dailybrief.plist</code></td><td>07:00 zilnic</td><td><code>~/.local/share/zero/jobs/daily_brief.sh</code></td></tr>
+<tr><td>Clippings housekeeping</td><td><code>~/Library/LaunchAgents/com.zero.clippingshousekeeping.plist</code></td><td>07:15 zilnic</td><td><code>~/.local/share/zero/jobs/clippings_housekeeping.sh</code></td></tr>
+</table>
+<p>Ambele: read-only pe manifest, scriu DOAR în <code>~/zero-workspace/outputs/</code>, zero acces la rețea, producător = <code>Qwen3.6-35B-A3B-MLX-6bit</code> (provider <code>omlx</code>), tool-uri de shell/exec dezactivate explicit (<code>--disabled-tools exec_command,bash,write_stdin,web_fetch,ask_user,request_permissions</code>) — a doua problemă găsită: modelul a încercat o dată să cheme <code>exec_command</code> ca să afle data curentă, ceea ce sub launchd (fără terminal interactiv pentru aprobare) a picat job-ul cu exit 1 tăcut. Fix: data injectată direct în prompt + tool-urile de shell blocate hard.</p>
+
+<h2>§4 — Rulare reală sub launchd (dovadă)</h2>
+<pre>launchctl kickstart -k gui/501/com.zero.dailybrief
+launchctl kickstart -k gui/501/com.zero.clippingshousekeeping
+→ last exit code = 0 (ambele)</pre>
+<p><strong>daily_brief_local_v1_2026-07-06.md</strong> (raw_file_count: 58, TOTAL declarat: 58 — match exact)</p>
+<p><strong>clippings_housekeeping_local_v1_2026-07-06.md</strong> (raw_file_count: 7, TOTAL declarat: 7 — match exact)</p>
+<p>Ambele sincronizate în <code>CLAUDE OUTPUTS/tooling/local_agent_jobs/</code> via <code>sync_outputs_to_repo.sh</code>.</p>
+
+<h2>§5 — Verifier loop (doctrina: verificator ≠ producător)</h2>
+<p>Provider nou adăugat în config Zero: <code>omlx-verifier</code> → model <code>gemma-4-26B-A4B-it-QAT-MLX-4bit</code>. <strong>Deviație de la spec (12B):</strong> <code>gemma-4-12B-it-QAT-GGUF</code> există pe disc dar e format GGUF — oMLX e runtime MLX-only, nu-l poate servi (confirmat: nu apare în <code>/v1/models</code>). 26B e singurul model MLX secundar disponibil ca verifier separat de producătorul 35B.</p>
+<table>
+<tr><th>Tier</th><th>Metodă</th><th>Test pe output real (58/58)</th><th>Test pe output sintetic cu discrepanță (55 real vs 40 declarat)</th></tr>
+<tr><td>1 — script determinist</td><td>grep count RAW_FILE_COUNT vs TOTAL declarat</td><td class="pass">PASS — match</td><td class="fail">FAIL — prins corect (55 ≠ 40)</td></tr>
+<tr><td>2 — model separat (26B)</td><td>prompt de verificare structurală/stil, independent de producție</td><td class="pass">VERDICT: PASS, LIPSA: nimic</td><td class="pass">VERDICT: PASS (nu verifică aritmetica — rol diferit, structural)</td></tr>
+</table>
+<p>Ordinea costului respectată: Tier 1 (gratis, instant) prinde discrepanțele numerice; Tier 2 (model, ~14GB swap) acoperă ce scriptul nu poate (stil, câmpuri lipsă, vocabular interzis).</p>
+
+<h2>§6 — Fișiere atinse</h2>
+<ul>
+<li><code>~/Library/Application Support/zero/config.json</code> — provider <code>omlx-verifier</code> adăugat</li>
+<li><code>~/Library/LaunchAgents/com.zero.dailybrief.plist</code>, <code>com.zero.clippingshousekeeping.plist</code> — noi</li>
+<li><code>~/.local/share/zero/jobs/</code> — <code>daily_brief.sh</code>, <code>clippings_housekeeping.sh</code>, <code>verifier_check.sh</code> — noi</li>
+<li><code>~/zero-workspace/</code> — nou (manifests/, outputs/, refresh_manifests.sh, sync_outputs_to_repo.sh)</li>
+<li><code>AGENT_COORDINATION.md</code> — secțiunea Zero actualizată cu constrângerea TCC + arhitectura zero-workspace</li>
+<li><code>CLAUDE OUTPUTS/tooling/local_agent_jobs/</code> — output-urile job-urilor, sincronizate din zero-workspace</li>
+</ul>
+
+<h2>Next — Faza 5 (Acceptance)</h2>
+<p>Bateria finală A1-A5, rulată integral de agentul local fără intervenție Claude. Notă pentru Faza 5: refresh-ul manifest-urilor rămâne un pas privilegiat manual — de inclus explicit în procedura de test A4 (job programat), nu presupune magic full-autonomy pe partea de citire Documents.</p>
+
+</body>
+</html>

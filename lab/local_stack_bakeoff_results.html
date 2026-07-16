@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Local Agent Stack — Faza 1 Bake-off Results</title>
+<style>
+  :root{--bg:#0f1116;--card:#1a1d27;--txt:#e6e8ee;--mut:#9aa0ad;--safe:#3fb950;--warn:#d29922;--bad:#f85149;--brd:#2b2f3a;--acc:#58a6ff;--win:#a371f7}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:32px}
+  .wrap{max-width:1020px;margin:0 auto}
+  h1{font-size:24px;margin:0 0 4px}
+  h2{font-size:18px;margin:34px 0 12px;border-bottom:1px solid var(--brd);padding-bottom:6px}
+  h3{font-size:15px;margin:18px 0 6px}
+  .sub{color:var(--mut);margin:0 0 22px}
+  .verdict{display:inline-block;padding:2px 10px;border-radius:20px;font-weight:600;font-size:13px}
+  .safe{background:rgba(63,185,80,.15);color:var(--safe)}
+  .warn{background:rgba(210,153,34,.15);color:var(--warn)}
+  .bad{background:rgba(248,81,73,.15);color:var(--bad)}
+  .winb{background:rgba(163,113,247,.16);color:var(--win)}
+  table{width:100%;border-collapse:collapse;background:var(--card);border-radius:8px;overflow:hidden;margin:8px 0}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--brd);vertical-align:top}
+  th{background:#20242f;font-size:12.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.03em}
+  tr:last-child td{border-bottom:none}
+  code{background:#20242f;padding:1px 5px;border-radius:4px;font:12.5px "SF Mono",Menlo,monospace;color:var(--acc)}
+  .card{background:var(--card);border:1px solid var(--brd);border-radius:8px;padding:16px 20px;margin:12px 0}
+  ul{margin:6px 0;padding-left:20px} li{margin:4px 0}
+  .note{background:rgba(210,153,34,.08);border-left:3px solid var(--warn);padding:10px 14px;border-radius:0 6px 6px 0;margin:10px 0}
+  .win{background:rgba(163,113,247,.08);border-left:3px solid var(--win);padding:12px 16px;border-radius:0 6px 6px 0;margin:12px 0}
+  .pass{color:var(--safe);font-weight:600}
+  .foot{color:var(--mut);font-size:13px;margin-top:32px;border-top:1px solid var(--brd);padding-top:14px}
+  .copy{background:#141720;border:1px solid var(--brd);border-radius:6px;padding:10px 14px;font-size:13.5px;color:#cdd2db;white-space:pre-wrap;margin:6px 0}
+  .mono{font:12.5px "SF Mono",Menlo,monospace}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Local Agent Stack — Faza 1: Bake-off Harness</h1>
+  <p class="sub">Executor: Opus 4.8 / effort high · 6 iul 2026 (S167) · spec: <code>local_agent_stack_SPEC_v1.md §4</code> · inferență: oMLX <code>localhost:8000</code></p>
+
+  <div class="win">
+    <strong>DECIZIE: <span class="verdict winb">ZERO</span></strong> — harness-ul adoptat pentru stack-ul local.<br>
+    Ambii candidați scriptabili au trecut <strong>5/5</strong> task-uri fără babysitting (prag = ≥4/5). Egalitate pe completitudine → tie-break spec = <strong>Zero</strong>, întărit de: integrare oMLX cu o singură comandă (vs proxy-shim + 3 fișiere editate la hermes), terminare curată (hermes nu s-a auto-oprit pe T5), plus <code>zero exec</code> JSON + permission gates native pentru orchestrarea din Faza 4.
+  </div>
+
+  <h2>1. Setup — cum s-a conectat fiecare candidat la oMLX</h2>
+  <p>Model cod/agentic: <code>Qwen3.6-35B-A3B-MLX-6bit</code> (nume exact din <code>/v1/models</code>). Model copy (T5): <code>Qwen3.6-27B-AEON-Ultimate-Uncensored-BF16-mlx-8Bit</code>. oMLX impune auth (401 fără cheie).</p>
+  <table>
+    <tr><th>Candidat</th><th>Instalare</th><th>Conectare la oMLX</th><th>Fricțiune</th></tr>
+    <tr>
+      <td><strong>Zero</strong> <span class="mono">v0.1.0 npm</span></td>
+      <td><code>npm i -g @gitlawb/zero</code> (binar prebuilt, SHA256 verificat — Nota A Faza 0)</td>
+      <td><span class="pass">1 comandă:</span> <code>zero providers add custom-openai-compatible --base-url …:8000/v1 --api-key-env OMLX_API_KEY</code> → connectivity <span class="pass">pass</span></td>
+      <td class="safe">Minimă</td>
+    </tr>
+    <tr>
+      <td><strong>hermes-agent</strong> <span class="mono">v0.17.0</span></td>
+      <td>deja instalat (<code>~/.local/bin/hermes</code>)</td>
+      <td>Coupling LM Studio-nativ: preflight <code>GET /api/v1/models</code> (schema <code>{"models":[…]}</code>, nu OpenAI <code>data</code>) fără auth; chat citea base_url din <code>.env</code> (<code>localhost:1234</code>) peste tot restul. A cerut un <strong>proxy-shim</strong> (reshape model-list + inject <code>Bearer</code>) + editarea a <strong>3 fișiere</strong> (<code>.env</code>, <code>auth.json</code>, <code>config.yaml</code>). Toate restaurate la final.</td>
+      <td class="warn">Ridicată</td>
+    </tr>
+    <tr>
+      <td><strong>Goose</strong> (baseline)</td>
+      <td>app desktop instalat + configurat</td>
+      <td>Doar <code>goosed</code> daemon (fără CLI scriptabil), configurat pe <code>custom_prin_lm_studio</code> (:1234, nu oMLX). Nedriveabil non-interactiv pentru bateria automată.</td>
+      <td class="mut">N/A (vezi §4)</td>
+    </tr>
+  </table>
+
+  <h2>2. Foaie de scor — 5 task-uri × 2 candidați, verificare deterministă</h2>
+  <p>Fixturi izolate (copie fresh per run), checker determinist per task (<code>find|wc</code>, <code>grep -w</code>, execuție reală, count-check). „Complet fără intervenție" = checker PASS.</p>
+  <table>
+    <tr><th>Task</th><th>Ce testează</th><th>Zero</th><th>hermes</th></tr>
+    <tr><td><strong>T1</strong> — listare HTML recursivă (7 fișiere, 4 în subfoldere, 3 nivele)</td><td>completitudine recursivă (<em>testul ratat de Goose S119</em>)</td><td><span class="pass">PASS</span> · 6s · 1 tool (glob)</td><td><span class="pass">PASS</span> · 9s</td></tr>
+    <tr><td><strong>T2</strong> — rename <code>foo→bar</code> în 3 fișiere + call sites</td><td>edit multi-fișier coerent</td><td><span class="pass">PASS</span> · 35s · 14 tool-calls</td><td><span class="pass">PASS</span> · 32s</td></tr>
+    <tr><td><strong>T3</strong> — <code>broken.py</code> (NameError) diagnostic + fix + re-run</td><td>shell + interpretare erori + recovery</td><td><span class="pass">PASS</span> · 17s · recovery clar</td><td><span class="pass">PASS</span> · 16s · recovery</td></tr>
+    <tr><td><strong>T4</strong> — extrage <code>version</code> din JSON → fișier nou</td><td>2+ tool-calls înlănțuite</td><td><span class="pass">PASS</span> · 16s</td><td><span class="pass">PASS</span> · 18s</td></tr>
+    <tr><td><strong>T5</strong> — copy landing ~150 cuvinte (swap 27B)</td><td>routing model + calitate non-cod</td><td><span class="pass">PASS</span> · 255s · 147w, 0 em-dash, 0 banned</td><td><span class="pass">PASS</span> · 351s · 130w, 0 em-dash, 0 banned</td></tr>
+    <tr style="background:#20242f"><td><strong>TOTAL</strong></td><td>prag adopție ≥4/5</td><td><strong class="pass">5/5</strong></td><td><strong class="pass">5/5</strong></td></tr>
+  </table>
+  <p class="mut" style="font-size:13px">Notă tool-calls: Zero loghează fiecare <code>[tool]</code> în stdout (rata brută vizibilă). hermes <code>-z</code> (one-shot non-TUI) tipărește doar mesajul final — tool-calls rulează silențios; succesul lor e dovedit de deliverable-ul corect (fișiere create/editate exact), deci rata pe rezultat = 100%, dar neitemizată.</p>
+
+  <h2>3. Metrici spec (per task)</h2>
+  <table>
+    <tr><th>Metrică</th><th>Zero</th><th>hermes</th></tr>
+    <tr><td>Task-uri complete fără intervenție</td><td class="pass">5/5</td><td class="pass">5/5</td></tr>
+    <tr><td>Rată tool-call (pe rezultat)</td><td>100% (itemizat)</td><td>100% (pe deliverable)</td></tr>
+    <tr><td>Timp total baterie (T1-T4, 35B cald)</td><td>74s</td><td>75s</td></tr>
+    <tr><td>Recuperare din eroare (T3)</td><td>a citit traceback, a diagnosticat typo, a reparat, a re-rulat singur</td><td>reparat corect (output mai terse)</td></tr>
+    <tr><td>Terminare curată</td><td class="safe">da (exit 0 prompt)</td><td class="warn">T5 nu s-a auto-oprit ~7min după ce scrisese <code>copy.md</code> corect (kill manual)</td></tr>
+    <tr><td>Output structurat pentru orchestrare</td><td class="safe"><code>-o json/stream-json</code>, permission gates, <code>zero exec</code></td><td><code>--yolo</code> auto-approve; fără gate granular în one-shot</td></tr>
+  </table>
+
+  <h2>4. Goose (baseline) — de ce nu a intrat în baterie</h2>
+  <div class="note">
+    Instalarea existentă expune doar <code>goosed</code> (daemon), fără CLI scriptabil non-interactiv, și e configurată pe provider <code>custom_prin_lm_studio</code> (:1234), nu oMLX. Driving-ul GUI prin computer-use pentru 5 task-uri = lent și fragil, fără să schimbe decizia (ambii candidați scriptabili sunt deja 5/5). Slăbiciunea tool-calling a Goose e deja documentată (S118/S119 — exact T1, ratarea subfolderelor). Rămâne <strong>fallback GUI</strong>, nu harness de orchestrare.
+  </div>
+
+  <h2>5. Output-uri T5 (calitate copy, 27B)</h2>
+  <h3>Zero (147 cuvinte)</h3>
+  <div class="copy">Your notes stay on your machine until you decide otherwise. That's the point. […] The subscription is optional. You pay once and keep the app […] No tiered pricing. [Download for your machine]</div>
+  <h3>hermes (130 cuvinte)</h3>
+  <div class="copy">Notes that live where you do. […] No account, no sync server, no version 2.0 surprise. You open a file, you see your words. That is the entire system. […] Download for your machine.</div>
+  <p class="mut" style="font-size:13px">Ambele respectă briefer-ul (o promisiune, un CTA, fără em-dash / „seamlessly" / „leverage" / „dive in"). Calitate comparabilă — nu departajează.</p>
+
+  <h2>6. De ce Zero (raționament decizie)</h2>
+  <div class="card">
+    <ul>
+      <li><strong>Egalitate pe criteriul primar</strong> (5/5 fără babysitting) → se aplică tie-break-ul din spec §4: „la egalitate câștigă Zero (permission gates + exec JSON mai simplu de orchestrat)".</li>
+      <li><strong>Integrare oMLX</strong>: Zero = 1 comandă, provider generic OpenAI-compatible. hermes = coupling LM Studio-nativ care a cerut proxy-shim + 3 fișiere config editate. Pentru un backend oMLX generic, Zero e drop-in; hermes e adaptare.</li>
+      <li><strong>Orchestrare Faza 4</strong>: <code>zero exec</code> cu <code>-o json/stream-json</code> + permission gates granulare (write/shell/network) &gt; <code>hermes --yolo</code> auto-approve. Verifier loop + launchd JOB I/O se leagă mai curat de Zero.</li>
+      <li><strong>Terminare</strong>: hermes a lăsat T5 să curgă ~7min după deliverable; Zero s-a oprit la răspuns. Contează pentru joburi programate.</li>
+      <li><strong>hermes nu e „pierdut"</strong>: capabil (5/5), self-improving skills + cron nativ — rămâne candidat #2 / fallback dacă Zero blochează la Faza 2/4.</li>
+    </ul>
+  </div>
+
+  <h2>7. Exit criteria (spec §4)</h2>
+  <ul>
+    <li>✅ Foaie de scor completă (2 candidați scriptabili × 5 task-uri × metrici) — deterministă, salvată aici.</li>
+    <li>✅ Prag ≥4/5 evaluat: ambii 5/5 → tie-break aplicat.</li>
+    <li>✅ Decizie scrisă: <strong>Zero</strong>.</li>
+    <li>⚠️ Goose baseline: nedriveabil non-interactiv din instalarea curentă → documentat §4, nu blochează decizia.</li>
+  </ul>
+
+  <p class="foot">
+    Artefacte în scratchpad (<code>bakeoff/</code>): fixturi, checkers deterministe, transcripte per run (<code>runs/&lt;cand&gt;_&lt;task&gt;/</code>), <code>scores.csv</code>, proxy-shim hermes (<code>omlx_lmstudio_proxy.py</code>).
+    Config hermes (<code>.env</code>/<code>auth.json</code>/<code>config.yaml</code>) <strong>restaurat la original</strong> (27b / LM Studio / :1234).
+    Următoarea sesiune: <strong>Faza 2 — instalare + config harness câștigător (Zero)</strong> pe SHA pinned <code>95ccd5bc…</code>, permission gates ON, fișier model-routing, smoke test T1+T4.
+  </p>
+</div>
+</body>
+</html>

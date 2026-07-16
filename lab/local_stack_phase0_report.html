@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Local Agent Stack — Faza 0 Security Gate Report</title>
+<style>
+  :root{--bg:#0f1116;--card:#1a1d27;--txt:#e6e8ee;--mut:#9aa0ad;--safe:#3fb950;--warn:#d29922;--bad:#f85149;--brd:#2b2f3a;--acc:#58a6ff}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:32px}
+  .wrap{max-width:980px;margin:0 auto}
+  h1{font-size:24px;margin:0 0 4px}
+  h2{font-size:18px;margin:32px 0 12px;border-bottom:1px solid var(--brd);padding-bottom:6px}
+  .sub{color:var(--mut);margin:0 0 24px}
+  .verdict{display:inline-block;padding:2px 10px;border-radius:20px;font-weight:600;font-size:13px}
+  .safe{background:rgba(63,185,80,.15);color:var(--safe)}
+  .warn{background:rgba(210,153,34,.15);color:var(--warn)}
+  .bad{background:rgba(248,81,73,.15);color:var(--bad)}
+  table{width:100%;border-collapse:collapse;background:var(--card);border-radius:8px;overflow:hidden;margin:8px 0}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--brd);vertical-align:top}
+  th{background:#20242f;font-size:13px;color:var(--mut);text-transform:uppercase;letter-spacing:.03em}
+  tr:last-child td{border-bottom:none}
+  code{background:#20242f;padding:1px 5px;border-radius:4px;font:13px "SF Mono",Menlo,monospace;color:var(--acc)}
+  .sha{font:12px "SF Mono",Menlo,monospace;color:var(--mut);word-break:break-all}
+  .card{background:var(--card);border:1px solid var(--brd);border-radius:8px;padding:16px 20px;margin:12px 0}
+  .card h3{margin:0 0 8px;font-size:16px}
+  ul{margin:6px 0 6px 0;padding-left:20px}
+  li{margin:3px 0}
+  .note{background:rgba(210,153,34,.08);border-left:3px solid var(--warn);padding:10px 14px;border-radius:0 6px 6px 0;margin:10px 0}
+  .foot{color:var(--mut);font-size:13px;margin-top:32px;border-top:1px solid var(--brd);padding-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Local Agent Stack — Faza 0: Security Gate</h1>
+  <p class="sub">Executor: Opus 4.8 / effort medium · 5 iul 2026 (S165) · spec: <code>local_agent_stack_SPEC_v1.md §3</code></p>
+
+  <div class="card">
+    <strong>Verdict global: <span class="verdict safe">4/4 SAFE</span></strong> pentru utilizarea intenționată (harness peste oMLX local, $0 cloud).
+    Zero repo UNSAFE. Instalarea în Faza 2 se face pe SHA-urile pinned de mai jos, cu 2 note de instalare (zero + hermes).
+  </div>
+
+  <h2>1. Rezultat per repo + SHA pinned</h2>
+  <table>
+    <tr><th>Repo</th><th>SHA pinned (scanat)</th><th>Verdict</th><th>Rezumat</th></tr>
+    <tr>
+      <td><strong>zero</strong><br><span class="sha">Gitlawb/zero</span></td>
+      <td class="sha">95ccd5bc327f6fb464ff0239f7229de789f578dc</td>
+      <td><span class="verdict safe">SAFE</span></td>
+      <td>Go. postinstall descarcă binar prebuilt (HTTPS-only + SHA-256 verificat + zip-slip guard + cap 512MB). Crash report = fișier local; Sentry/OTEL ținut explicit în afara build-ului base. Credentials = keychain propriu (credstore/keyring). <em>Notă instalare A.</em></td>
+    </tr>
+    <tr>
+      <td><strong>hermes-agent</strong><br><span class="sha">nousresearch/hermes-agent</span></td>
+      <td class="sha">18058c451568b7c4716555b9feb42cb5cf57156e</td>
+      <td><span class="verdict safe">SAFE</span></td>
+      <td>Python. postinstall = <code>echo</code> inofensiv. setup.py cmdclass = read-only source build. LSP telemetry dezactivat explicit (<code>enabled:False</code>). <code>redact.py</code> <em>detectează</em> env-dump ca să-l cenzureze din log-uri (invers de exfil). <em>Notă instalare B.</em></td>
+    </tr>
+    <tr>
+      <td><strong>skills-manager</strong><br><span class="sha">yibie/skills-manager</span></td>
+      <td class="sha">69e81e08817dc10c8722f4ebf4cae392b6a70300</td>
+      <td><span class="verdict safe">SAFE</span></td>
+      <td>Swift/macOS nativ. Fără install hooks de rețea; <code>prepare: tsc</code> pe sub-modulul tui. „telemetry"-hits = string-uri de traducere pentru o descriere de skill Azure (zgomot).</td>
+    </tr>
+    <tr>
+      <td><strong>graphify</strong><br><span class="sha">Graphify-Labs/graphify</span></td>
+      <td class="sha">21b52e195d3735e0267c00c9ceca63ff17c61cb9</td>
+      <td><span class="verdict safe">SAFE</span></td>
+      <td>Python, <code>uv.lock</code> pinned. Extraction local via tree-sitter. Fără build hooks de rețea, fără binare precompilate.</td>
+    </tr>
+  </table>
+
+  <h2>2. De ce skillspector auto-verdict NU e semnalul aici</h2>
+  <p>skillspector <code>--no-llm</code> (pattern-only, $0, fără cloud) a dat <strong>score 100 / CRITICAL / DO_NOT_INSTALL pe TOATE 4</strong>. Asta e artefact de mismatch de tool, nu semnal:</p>
+  <ul>
+    <li>skillspector e făcut să scaneze <strong>skills</strong> (fișiere prompt/markdown mici). Astea 4 sunt <strong>harness-uri de agenți</strong> — al căror job legitim <em>este</em> file ops, shell, privilege escalation, tool use.</li>
+    <li>Distribuția confirmă: hermes = 8.116 findings non-test (framework Python mare), zero = 286, categoriile top = „Privilege Escalation / Dangerous Code Execution / Tool Misuse" — exact ce face orice framework agentic.</li>
+    <li>OSV.dev CVE lookup a eșuat (fără rețea în sandbox) → fallback static; nu afectează verdictul de pattern.</li>
+  </ul>
+  <p>Semnalul real (per spec §3) = <strong>review manual</strong>: install/build hooks cu network, citire credentials, telemetrie on-by-default, binare fără sursă. Ăla a trecut 4/4.</p>
+
+  <h2>3. Note de instalare pentru Faza 2</h2>
+  <div class="note">
+    <strong>Notă A — zero:</strong> npm postinstall trage un <em>binar prebuilt</em> din GitHub Release, deci NU rulezi codul de pe SHA-ul auditat, ci un binar. Fetch-ul e HTTPS + SHA-256 verificat, dar ca să rămâi pe SHA-ul pinned: <strong>build din sursă</strong> (<code>go run ./cmd/zero</code> / <code>make</code>) SAU verifică manual SHA-256-ul release-ului înainte de a-l lăsa să ruleze.
+  </div>
+  <div class="note">
+    <strong>Notă B — hermes:</strong> <code>agent/anthropic_adapter.py:871 _read_claude_code_credentials_from_keychain</code> poate citi OAuth-ul Claude Code din macOS Keychain (feature de conveniență: reutilizează login-ul Claude). Fires DOAR dacă configurezi provider Anthropic. Pe setup oMLX-only nu se declanșează niciodată — <strong>nu configura provider Anthropic în hermes</strong> și calea rămâne moartă.
+  </div>
+
+  <h2>4. Checklist manual (spec §3)</h2>
+  <table>
+    <tr><th>Check</th><th>zero</th><th>hermes</th><th>skills-manager</th><th>graphify</th></tr>
+    <tr><td>Post-install/build hook cu network</td><td>binar HTTPS+SHA256 (Nota A)</td><td>echo (curat)</td><td>tsc (curat)</td><td>niciunul</td></tr>
+    <tr><td>Citire credentials (aws/keychain/env)</td><td>keychain propriu</td><td>keychain Claude opt-in (Nota B); redact env-dump</td><td>niciuna</td><td>niciuna</td></tr>
+    <tr><td>Telemetrie ON by default</td><td>NU (local file; Sentry opt-in)</td><td>NU (LSP telemetry off)</td><td>NU</td><td>NU</td></tr>
+    <tr><td>Binare precompilate fără sursă</td><td>trase la install (Nota A)</td><td>niciunul</td><td>niciunul</td><td>niciunul</td></tr>
+  </table>
+
+  <h2>5. Exit criteria</h2>
+  <ul>
+    <li>✅ Raport 4/4 repo cu verdict SAFE/UNSAFE — <strong>4/4 SAFE</strong>.</li>
+    <li>✅ SHA pinned notat per repo (secțiunea 1).</li>
+    <li>✅ Zero UNSAFE → NU se declanșează STOP-ul. Faza 1 (bake-off) poate porni.</li>
+  </ul>
+
+  <p class="foot">Clone-uri read-only în scratchpad (<code>local_stack_phase0/</code>), NU în „Claude - folder". Rapoarte JSON brute skillspector: <code>local_stack_phase0/reports/*.json</code>. Următoarea sesiune: <strong>Faza 1 — bake-off harness</strong> (Zero vs hermes vs Goose, 5 task-uri pe oMLX, prag ≥4/5 fără babysitting).</p>
+</div>
+</body>
+</html>
