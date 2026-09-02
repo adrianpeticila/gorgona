@@ -1,88 +1,150 @@
-# Gorgona
+<div align="center">
 
-**The operating system I built to run a portfolio of brands with AI. Alone.**
+# GORGONA
 
-Named after the Gorgon for a reason. Anything that tries to sneak past the guards gets turned to stone.
+**Turn runaway AI agents to stone.**  
+*The deterministic guardrail engine, model router, and execution discipline for autonomous AI agents.*
 
-Not a product. Not a framework with a webinar attached. A set of rules, guards, and scripts that sit on top of an AI coding agent and decide how work actually gets done. Which model touches a task. How tokens get spent. What gets trusted, what gets verified, what gets thrown out.
+<br/>
 
-I'm a marketer, not a software engineer. That's the point.
+<img src="assets/gorgona.jpg" alt="Gorgona" width="480" />
 
----
+<br/>
 
-## Why this exists
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Zero Dependencies](https://img.shields.io/badge/dependencies-zero-brightgreen.svg)](https://github.com/adrianpeticila/gorgona)
+[![Code Style: Clean](https://img.shields.io/badge/style-anti--slop-black.svg)](https://github.com/adrianpeticila/gorgona)
 
-Running one brand with AI is easy. Running several is where people quietly drown.
-
-Three problems decide whether you ship or stall:
-
-1. **Cost.** An unmanaged AI workflow burns a week's budget in a day. Ask me how I know.
-2. **Trust.** Models hallucinate facts, invent sources, and write linters that never fail. Verify, or ship garbage with confidence.
-3. **Isolation.** Some of my brands are public, under my name. Some are anonymous by design. One leak and it's over. Permanently.
-
-Gorgona answers all three. Encoded once, so I don't re-decide them every morning.
+</div>
 
 ---
 
-## How it's built
+> **GORGONA** is the operating system I built to run a portfolio of brands with AI. Alone. To survive that without burning $500/mo on tokens or leaking identities, you have to turn runaway agents to stone.
 
+---
+
+## Why Gorgona?
+
+Most AI agent frameworks are built with recursive, probabilistic loops. When things go wrong, agents burn through API credits, contaminate repository contexts, or hallucinate credentials.
+
+Gorgona takes the opposite stance:
+- **Deterministic control**: Agents operate under strict, uncompromising rules.
+- **Zero dependencies**: Pure standard library Python 3.10+. Zero pip bloat. Zero telemetry.
+- **Fail-safe stone mode**: Runaway or leaking agents are instantly frozen.
+
+```mermaid
+flowchart TD
+    A[Autonomous Agent Action] --> B{Gorgona Engine}
+    B -->|Check Credentials| C[Exposure Guard]
+    B -->|Check Brand Borders| D[Isolation Guard]
+    B -->|Check Style & Slop| E[Text Cleaner Guard]
+    B -->|Check Loops & Depth| F[Memory Graph Guard]
+    
+    C -->|Violation| G[Turn to Stone: Halted]
+    D -->|Violation| G
+    E -->|Violation| G
+    F -->|Cycle Detected| G
+    
+    C -->|Passed| H[Verified Execution]
+    D -->|Passed| H
+    E -->|Passed| H
+    F -->|Passed| H
 ```
-context per project   →  loaded only when a task touches that project, never all at once
-shared rules          →  one small always-on file; the rest lives in memory, recalled on demand
-outputs               →  every deliverable versioned, nothing overwritten
-memory                →  persistent facts + corrections that graduate into rules
-utils                 →  the guards and scripts below
+
+---
+
+## Quickstart (30 Seconds)
+
+### 1. Installation
+
+Install directly in editable mode or via pip:
+
+```bash
+git clone https://github.com/adrianpeticila/gorgona.git
+cd gorgona
+pip install -e .
 ```
 
-One principle above all: **the always-loaded context stays tiny.** Anything read on every task compounds in cost forever. It earns its place or it gets evicted.
+### 2. Verify System Health
+
+Run the built-in diagnostic doctor:
+
+```bash
+gorgona doctor
+```
+
+Output:
+```text
+  ____ ___  ____   ____  ___  _   _    _    
+ / ___/ _ \|  _ \ / ___|/ _ \| \ | |  / \   
+| |  | | | | |_) | |  _| | | |  \| | / _ \  
+| |__| |_| |  _ <| |_| | |_| | |\  |/ ___ \ 
+ \____\___/|_| \_\\____|\___/|_| \_/_/   \_\
+    
+  GORGONA v0.1.0 - Autonomous Agent Guardrail Engine
+  Turn runaway AI agents to stone.
+
+Checking Gorgona installation and environment integrity...
+
+  [PASS] Python Version (>= 3.10): Python 3.10+
+  [PASS] Zero Dependencies Policy: Zero external pip dependencies required
+  [PASS] Guard Module: ExposureGuard: Loaded
+  [PASS] Guard Module: IsolationGuard: Loaded
+  [PASS] Guard Module: TextCleanerGuard: Loaded
+  [PASS] Guard Module: MemoryGraphGuard: Loaded
+
+System healthy and ready.
+```
+
+### 3. Scan a Directory or File
+
+Scan any project tree for secrets, brand leakages, or AI slop:
+
+```bash
+gorgona scan ./my-agent-output
+```
 
 ---
 
-## The system, in seven parts
+## Python API
 
-### 1. Model routing
-Every task gets a model and an effort level announced before work starts. Sessions open on the cheap, fast model. Escalation to the expensive one has to be justified: critical code, architecture, strategy. Batch work goes to cheaper or local models entirely. Boring habit. Saves a fortune.
+Use Gorgona programmatically in your agent workflows:
 
-### 2. Token economy
-Big inputs never go straight into the expensive model. Long PDFs, web dumps, transcripts: a cheap model reads them first, only the conclusion enters the reasoning step. One task, one session. Hard stop. Every token saved is a token spent on real work instead of re-reading my own history.
+```python
+from gorgona import ExposureGuard, IsolationGuard, TextCleanerGuard, MemoryGraphGuard
 
-### 3. Resource verification
-Nothing from the internet gets trusted on sight. Fetched clean, checked, then used. Dead-ends get written down so I never chase the same broken path twice. No fact enters public copy without a source. Can't source it? It ships labeled unverified, or it doesn't ship.
-→ [`tools/security_exposure_check.sh`](tools/security_exposure_check.sh)
+# 1. Prevent secret leakage
+exposure = ExposureGuard()
+findings = exposure.scan_text("sk-abcdef1234567890abcdef123456")
+assert len(findings) > 0
 
-### 4. Skill scanning
-Third-party code is guilty until cleared. Every external skill or plugin gets a security scan before it runs. And a rule I paid for: **the thing that checks the work is never the thing that produced it.** A guard that has never failed isn't a guard. It's decoration. So I break my guards on purpose, with bad input, to prove they can say no.
+# 2. Prevent brand context contamination
+isolation = IsolationGuard({"BrandAlpha": ["BrandBetaSecret", "ClientConfidential"]})
+violations = isolation.check_content("BrandAlpha", "Deploying changes with ClientConfidential notes.")
+assert len(violations) > 0
 
-### 5. Content and code cleaning
-Public writing runs a fixed pipeline: draft, humanize, then a mechanical lint that strips the tells of machine-written text. Code typechecks before it's called done. Changes stay surgical. Touch what was asked. Nothing else.
+# 3. Prevent AI slop and banned characters
+cleaner = TextCleanerGuard(ban_em_dash=True)
+issues = cleaner.scan("Let us delve into this vibrant ecosystem.")
+assert len(issues) > 0
 
-### 6. Multi-brand isolation
-Some brands run under my name. Some are anonymous by design. They never meet: separate identities, context loaded per brand so projects can't see each other, and an automated guard that blocks my real identity from ever appearing in an anonymous brand's output. The guard runs on every promotion to a public surface. The Gorgon at the door.
-
-### 7. Memory that learns
-Facts persist across sessions in file-based memory, recalled when relevant, never always-on. When I get something wrong, the correction gets written down and graduates into a standing rule. The same mistake doesn't get a second season.
-
----
-
-## What's in the box
-
-**`tools/`**, three guards that actually run:
-- [`security_exposure_check.sh`](tools/security_exposure_check.sh): post-deploy check that a live domain isn't serving `.env`, `.git`, or backup files to strangers
-- [`memory_graph_check.py`](tools/memory_graph_check.py): lints the memory graph. Broken links, orphaned facts, dead index entries.
-- [`morning_routine.py`](tools/morning_routine.py): daily 7:00 briefing. Content due today, stale projects, pending decisions, sessions that ended without cleanup. Discipline as code, because discipline as intention doesn't survive Tuesday.
-
-**`lab/`**, the lab notes from building a fully local AI agent stack on a MacBook: harness bakeoff, provisioning, guards, permissions warfare with macOS. In Romanian, because that's the language I debug in. The verdicts are in the tables either way.
+# 4. Prevent runaway loops
+graph = MemoryGraphGuard(max_depth=5, repetition_threshold=3)
+loop_report = graph.record_step("call_tool_read_file")
+```
 
 ---
 
-## What this tells you about me
+## Architecture & Modules
 
-I think in systems, not tasks. I care about unit cost, not just output. I verify before I trust, including my own tools. And I can hold a portfolio of moving projects in one head without letting them collide.
-
-The public brands this runs: [peticila.ro](https://peticila.ro), [aah.monster](https://aah.monster), [aponia.ro](https://aponia.ro).
-
-The rest stay anonymous. That's not a gap in the portfolio. That's the system working.
+- **`gorgona.guards.exposure`**: High-entropy regex pattern matching and forbidden file scanners.
+- **`gorgona.guards.isolation`**: Multi-tenant namespace boundaries to avoid cross-client context bleed.
+- **`gorgona.guards.text_clean`**: Anti-slop analyzer and zero em-dash policy enforcer.
+- **`gorgona.guards.memory_graph`**: Graph DFS cycle detection and recursion depth circuit breakers.
 
 ---
 
-*The scripts here are sanitized for public release. The strategy and the brand playbooks stay private. You get the machine, not the ammunition.*
+## License
+
+MIT License. Crafted with discipline by Adrian Peticila.

@@ -16,7 +16,7 @@ BASE = Path(os.environ.get("GORGONA_BASE", Path.home() / "workspace"))
 PROJECTS_DIR = BASE / "PROJECTS"
 CLAUDE_MD = BASE / "CLAUDE.md"
 SESSIONS_DIR = Path.home() / ".claude" / "sessions"
-BRIEFINGS_DIR = BASE / "CLAUDE OUTPUTS/TOOLS/briefings"
+BRIEFINGS_DIR = BASE / "OUTPUTS/TOOLS/briefings"
 BRIEFINGS_DIR.mkdir(parents=True, exist_ok=True)
 
 TODAY = datetime.now().date()
