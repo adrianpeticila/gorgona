@@ -147,4 +147,4 @@ loop_report = graph.record_step("call_tool_read_file")
 
 ## License
 
-MIT License. Crafted with discipline by Adrian Peticila.
+MIT License. Crafted with discipline by Adrian M. Peticila.
