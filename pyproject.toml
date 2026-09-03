@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gorgona"
-version = "0.1.0"
-description = "Deterministic guardrail engine, model router, and execution discipline for autonomous AI agents."
+version = "0.2.0"
+description = "Deterministic guardrails and execution discipline for autonomous AI agents."
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}

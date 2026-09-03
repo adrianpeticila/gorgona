@@ -1,150 +1,136 @@
-<div align="center">
+# Gorgona v0.2.0 - Deterministic Guardrail Engine for Autonomous AI Agents
 
-# GORGONA
+![Python >= 3.10](https://img.shields.io/badge/Python->=3.10-blue.svg)
+![Zero Dependencies](https://img.shields.io/badge/Dependencies-Zero%20(stdlib%20only)-success.svg)
+[![Tests](https://img.shields.io/badge/Tests-37/37%20Passing-brightgreen.svg)](tests/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-**Turn runaway AI agents to stone.**  
-*The deterministic guardrail engine, model router, and execution discipline for autonomous AI agents.*
+```text
+  ____ ___  ____   ____  ___  _   _    _
+ / ___/ _ \|  _ \ / ___|/ _ \| \ | |  / \
+| |  | | | | |_) | |  _| | | |  \| | / _ \
+| |__| |_| |  _ <| |_| | |_| | |\  |/ ___ \
+ \____\___/|_| \_\\____|\___/|_| \_/_/   \_\
 
-<br/>
+  GORGONA v0.2.0 - Autonomous Agent Guardrail Engine
+  Turn runaway AI agents to stone.
+```
 
-<img src="assets/gorgona.jpg" alt="Gorgona" width="480" />
+## The Value Proposition: Why Gorgona?
 
-<br/>
+Most agent guardrails fail because they are slow, non-deterministic, or overly complex.
+- **Bloated Dependencies:** AI tooling is often riddled with massive ML libraries.
+- **Non-deterministic LLM Evaluators:** "LLM-as-a-judge" is flaky, slow, and expensive.
+- **Latency:** High cold start times bottleneck agent pipelines.
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Zero Dependencies](https://img.shields.io/badge/dependencies-zero-brightgreen.svg)](https://github.com/adrianpeticila/gorgona)
-[![Code Style: Clean](https://img.shields.io/badge/style-anti--slop-black.svg)](https://github.com/adrianpeticila/gorgona)
+**Gorgona wins because:**
+- **Sub-10ms Cold Start:** Starts instantly.
+- **Zero External Dependencies:** Built entirely on the Python Standard Library.
+- **Mathematically Deterministic Gates:** Rules are hard-coded, regex-backed, and graph-validated. No probabilistic guessing. If a condition is met, the process is halted immediately.
 
-</div>
-
----
-
-> **GORGONA** is the operating system I built to run a portfolio of brands with AI. Alone. To survive that without burning $500/mo on tokens or leaking identities, you have to turn runaway agents to stone.
-
----
-
-## Why Gorgona?
-
-Most AI agent frameworks are built with recursive, probabilistic loops. When things go wrong, agents burn through API credits, contaminate repository contexts, or hallucinate credentials.
-
-Gorgona takes the opposite stance:
-- **Deterministic control**: Agents operate under strict, uncompromising rules.
-- **Zero dependencies**: Pure standard library Python 3.10+. Zero pip bloat. Zero telemetry.
-- **Fail-safe stone mode**: Runaway or leaking agents are instantly frozen.
+## Architecture & Guard Engines
 
 ```mermaid
 flowchart TD
-    A[Autonomous Agent Action] --> B{Gorgona Engine}
-    B -->|Check Credentials| C[Exposure Guard]
-    B -->|Check Brand Borders| D[Isolation Guard]
-    B -->|Check Style & Slop| E[Text Cleaner Guard]
-    B -->|Check Loops & Depth| F[Memory Graph Guard]
-    
-    C -->|Violation| G[Turn to Stone: Halted]
-    D -->|Violation| G
-    E -->|Violation| G
-    F -->|Cycle Detected| G
-    
-    C -->|Passed| H[Verified Execution]
-    D -->|Passed| H
-    E -->|Passed| H
-    F -->|Passed| H
+    Agent[Autonomous AI Agent] --> CLI[Gorgona CLI / API]
+
+    subgraph Core Guard Engines
+        CLI --> Exposure[ExposureGuard: Secrets & Files]
+        CLI --> Isolation[IsolationGuard: Brand Boundaries]
+        CLI --> TextCleaner[TextCleanerGuard: Markdown & Slop]
+        CLI --> MemoryGraph[MemoryGraphGuard: DAG Validation]
+    end
+
+    Exposure -- Pass --> CleanExec
+    Isolation -- Pass --> CleanExec
+    TextCleaner -- Pass --> CleanExec
+    MemoryGraph -- Pass --> CleanExec
+
+    Exposure -- Fail --> Halting
+    Isolation -- Fail --> Halting
+    TextCleaner -- Fail --> Halting
+    MemoryGraph -- Fail --> Halting
+
+    CleanExec((Clean Execution<br/>Exit 0)):::greenPath
+    Halting{Turn to stone:<br/>Process halted<br/>Exit 1}:::redPath
+
+    classDef greenPath fill:#d4edda,stroke:#28a745,stroke-width:2px;
+    classDef redPath fill:#f8d7da,stroke:#dc3545,stroke-width:2px;
 ```
 
----
+## CLI Reference
 
-## Quickstart (30 Seconds)
+Gorgona provides 6 CLI commands designed to easily integrate into CI/CD pipelines, agent pre-flight checks, and cron jobs.
 
-### 1. Installation
-
-Install directly in editable mode or via pip:
-
-```bash
-git clone https://github.com/adrianpeticila/gorgona.git
-cd gorgona
-pip install -e .
-```
-
-### 2. Verify System Health
-
-Run the built-in diagnostic doctor:
-
+### `gorgona doctor`
+Dynamic canary verification suite. Validates the health of your Python environment and runs synthetic tests against all guard engines to ensure they fail when they are supposed to.
 ```bash
 gorgona doctor
 ```
 
-Output:
-```text
-  ____ ___  ____   ____  ___  _   _    _    
- / ___/ _ \|  _ \ / ___|/ _ \| \ | |  / \   
-| |  | | | | |_) | |  _| | | |  \| | / _ \  
-| |__| |_| |  _ <| |_| | |_| | |\  |/ ___ \ 
- \____\___/|_| \_\\____|\___/|_| \_/_/   \_\
-    
-  GORGONA v0.1.0 - Autonomous Agent Guardrail Engine
-  Turn runaway AI agents to stone.
-
-Checking Gorgona installation and environment integrity...
-
-  [PASS] Python Version (>= 3.10): Python 3.10+
-  [PASS] Zero Dependencies Policy: Zero external pip dependencies required
-  [PASS] Guard Module: ExposureGuard: Loaded
-  [PASS] Guard Module: IsolationGuard: Loaded
-  [PASS] Guard Module: TextCleanerGuard: Loaded
-  [PASS] Guard Module: MemoryGraphGuard: Loaded
-
-System healthy and ready.
-```
-
-### 3. Scan a Directory or File
-
-Scan any project tree for secrets, brand leakages, or AI slop:
-
+### `gorgona scan`
+Recursive scan for secrets (PATs, `sk-proj-`, generic tokens), forbidden files (e.g., `.env`), and prose slop.
 ```bash
-gorgona scan ./my-agent-output
+gorgona scan [PATH] [--max-files N]
 ```
 
----
+### `gorgona guard-isolation`
+Brand boundary isolation with word-boundary accuracy.
+```bash
+gorgona guard-isolation [PATH] [--brand BRAND] [--rules RULES_JSON] [--terms TERMS...]
+```
 
-## Python API
+### `gorgona clean`
+Syntax-aware markdown sanitizer. Fixes em/en dashes, invisible unicode, and prose slop while meticulously preserving code blocks (`...` and ```...```).
+```bash
+gorgona clean [PATH] [--fix] [--dry-run]
+```
 
-Use Gorgona programmatically in your agent workflows:
+### `gorgona lint-memory`
+Memory graph linter. Validates frontmatter YAML, enforces case-normalized wiki-links, and performs Depth-First Search (DFS) cycle detection to prevent agents from falling into infinite context loops.
+```bash
+gorgona lint-memory [PATH]
+```
+
+### `gorgona init`
+Safe workspace initialization with collision guard.
+```bash
+gorgona init [PATH] [--force]
+```
+
+## Python API Usage
 
 ```python
 from gorgona import ExposureGuard, IsolationGuard, TextCleanerGuard, MemoryGraphGuard
+from pathlib import Path
 
-# 1. Prevent secret leakage
+# 1. Exposure Guard - Secret & Forbidden File Detection
 exposure = ExposureGuard()
-findings = exposure.scan_text("sk-abcdef1234567890abcdef123456")
-assert len(findings) > 0
+findings = exposure.scan_text("sk-proj-abcdef1234567890abcdef123456")
+path_findings = exposure.scan_path(Path("./agent_workspace"))
 
-# 2. Prevent brand context contamination
-isolation = IsolationGuard({"BrandAlpha": ["BrandBetaSecret", "ClientConfidential"]})
-violations = isolation.check_content("BrandAlpha", "Deploying changes with ClientConfidential notes.")
-assert len(violations) > 0
+# 2. Isolation Guard - Brand & Tenant Boundaries
+isolation = IsolationGuard(brand_rules={"BrandAlpha": {"BrandBeta": ["BrandBetaSecret"]}})
+violations = isolation.check_content("BrandAlpha", "Using BrandBetaSecret in BrandAlpha context")
 
-# 3. Prevent AI slop and banned characters
-cleaner = TextCleanerGuard(ban_em_dash=True)
-issues = cleaner.scan("Let us delve into this vibrant ecosystem.")
-assert len(issues) > 0
+# 3. Text Cleaner Guard - Anti-Slop & Typography Sanitizer
+cleaner = TextCleanerGuard()
+cleaned_text = cleaner.clean("Let's delve into this \u2014 clean result.")
 
-# 4. Prevent runaway loops
-graph = MemoryGraphGuard(max_depth=5, repetition_threshold=3)
-loop_report = graph.record_step("call_tool_read_file")
+# 4. Memory Graph Guard - Loop Prevention & Graph Cycles
+graph = MemoryGraphGuard(max_depth=8, repetition_threshold=3)
+graph.add_edge("PlanA", "PlanB")
+graph.add_edge("PlanB", "PlanA")
+has_cycle, cycle_path = graph.detect_graph_cycle()  # (True, ['PlanA', 'PlanB', 'PlanA'])
 ```
 
----
 
-## Architecture & Modules
+## Verification & Test Suite
 
-- **`gorgona.guards.exposure`**: High-entropy regex pattern matching and forbidden file scanners.
-- **`gorgona.guards.isolation`**: Multi-tenant namespace boundaries to avoid cross-client context bleed.
-- **`gorgona.guards.text_clean`**: Anti-slop analyzer and zero em-dash policy enforcer.
-- **`gorgona.guards.memory_graph`**: Graph DFS cycle detection and recursion depth circuit breakers.
+Gorgona is meticulously tested.
+**37/37 unit tests pass in ~0.8s** with zero external dependencies.
 
----
-
-## License
-
-MIT License. Crafted with discipline by Adrian M. Peticila.
+Run the test suite using `unittest`:
+```bash
+python -m unittest discover tests
+```

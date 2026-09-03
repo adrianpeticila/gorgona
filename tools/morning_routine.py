@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Morning Routine — Adrian M. Peticila
+Morning Routine
 Rulează zilnic la 7:00 via launchd.
 Output: briefing markdown + notificare macOS.
 """
@@ -12,7 +12,7 @@ import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
 
-BASE = Path(os.environ.get("GORGONA_BASE", Path.home() / "workspace"))
+BASE = Path(os.environ.get("GORGONA_WORKSPACE", Path.home() / "workspace"))
 PROJECTS_DIR = BASE / "PROJECTS"
 CLAUDE_MD = BASE / "CLAUDE.md"
 SESSIONS_DIR = Path.home() / ".claude" / "sessions"
